@@ -4,63 +4,73 @@ on:
   workflow_dispatch:
     inputs:
       username:
-        description: TikTok username without @
+        description: 'TikTok Username to record'
         required: true
         type: string
-
-permissions:
-  contents: read
-
-# One recorder per creator prevents duplicate files when the 5-minute monitor
-# sees the same live repeatedly. A new run after the runner limit creates the
-# next segment; the README explains how to concatenate them losslessly.
-concurrency:
-  group: tiktok-record-${{ inputs.username }}
-  cancel-in-progress: false
 
 jobs:
   record:
     runs-on: ubuntu-latest
-    timeout-minutes: 350
+    timeout-minutes: 360 
+
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
         with:
-          python-version: "3.11"
-      - name: Install FFmpeg and recorder
+          python-version: '3.10'
+
+      - name: Install System Dependencies (FFmpeg & Rclone)
         run: |
-          sudo apt-get update -qq
-          sudo apt-get install -y -qq ffmpeg
-          git clone --depth 1 https://github.com/Michele0303/TikTok-Live-Recorder /tmp/recorder
-          pip install --disable-pip-version-check /tmp/recorder
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+          sudo -v ; curl https://rclone.org/install.sh | sudo bash
+
+      - name: Setup Rclone Configuration
+        env:
+          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+        run: |
+          mkdir -p ~/.config/rclone
+          echo "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
+
+      - name: Clone TikTok-Live-Recorder
+        run: |
+          git clone https://github.com/Michele0303/tiktok-live-recorder.git /tmp/recorder
+          cd /tmp/recorder
+          pip install -r requirements.txt
+
       - name: Record until the LIVE ends or the runner limit approaches
         env:
           USERNAME: ${{ inputs.username }}
+          COOKIES_JSON: ${{ secrets.TIKTOK_COOKIES_JSON }}
         run: |
           mkdir -p recordings
+          if [ -n "$COOKIES_JSON" ]; then
+            echo "$COOKIES_JSON" > cookies.json
+            echo "$COOKIES_JSON" > /tmp/recorder/cookies.json
+          fi
           python /tmp/recorder/src/main.py \
             -user "$USERNAME" \
             -mode manual \
             -duration 20400 \
             -output recordings \
             -no-update-check
+
       - name: Upload to Google Drive
-        if: always() && hashFiles('recordings/*') != ''
-        env:
-          RCLONE_CONFIG_B64: ${{ secrets.RCLONE_CONFIG_B64 }}
-          DRIVE_REMOTE_PATH: ${{ vars.DRIVE_REMOTE_PATH }}
+        if: always()
         run: |
-          set -euo pipefail
-          test -n "$RCLONE_CONFIG_B64" || { echo 'Missing RCLONE_CONFIG_B64; retaining artifact only'; exit 0; }
-          mkdir -p "$HOME/.config/rclone"
-          echo "$RCLONE_CONFIG_B64" | base64 -d > "$HOME/.config/rclone/rclone.conf"
-          curl -fsSL https://rclone.org/install.sh | sudo bash
-          rclone copy recordings "${DRIVE_REMOTE_PATH:-gdrive:tiktok-live}" --progress
+          rclone copy recordings/ gdrive:tiktok-live \
+            --progress \
+            --transfers 4 \
+            --checkers 8 \
+            --ignore-existing
+
       - name: Retain short-lived recovery artifact
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: tiktok-${{ inputs.username }}-${{ github.run_id }}
-          path: recordings/
-          retention-days: 3
-          if-no-files-found: ignore
+          name: tiktok-recording-${{ inputs.username }}-${{ github.run_id }}
+          path: recordings/*.mp4
+          retention-days: 1
