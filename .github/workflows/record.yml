@@ -30,7 +30,7 @@ jobs:
 
       - name: Setup Rclone Configuration
         env:
-          RCLONE_CONF: ${{ secrets.RCLONE_CONF }}
+          RCLONE_CONF: ${{ secrets.RCLONE_CONFIG_B64 }}
         run: |
           mkdir -p ~/.config/rclone
           echo "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
