@@ -56,7 +56,7 @@ jobs:
           
           # Entramos a la carpeta del grabador para que 'uv' funcione sin llorar
           cd /tmp/recorder
-          python src/main.py \
+          uv run python src/main.py \
             -user "$USERNAME" \
             -mode manual \
             -duration 20400 \
