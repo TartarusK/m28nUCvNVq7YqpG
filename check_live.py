@@ -30,11 +30,16 @@ async def check(username: str) -> Result:
     except Exception as exc:  # one account failing must not hide other accounts
         return Result(username=username, live=False, error=f"{type(exc).__name__}: {exc}")
     finally:
-        close = getattr(client, "close", None)
-        if close:
-            value = close()
-            if asyncio.iscoroutine(value):
-                await value
+        try:
+            close = getattr(client, "close", None)
+            if close:
+                value = close()
+                if asyncio.iscoroutine(value):
+                    await value
+        except Exception:
+            # Si TikTok bloqueó la conexión, ignoramos el error de cierre 
+            # para no romper el archivo JSON ni detener GitHub Actions.
+            pass
 
 
 async def main(users: list[str]) -> int:
