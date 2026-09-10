@@ -38,8 +38,6 @@ jobs:
       - name: Clone TikTok-Live-Recorder
         run: |
           git clone https://github.com/Michele0303/tiktok-live-recorder.git /tmp/recorder
-          cd /tmp/recorder
-          pip install -r requirements.txt
 
       - name: Record until the LIVE ends or the runner limit approaches
         env:
