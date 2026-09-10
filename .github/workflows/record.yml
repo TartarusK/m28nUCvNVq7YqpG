@@ -1,0 +1,67 @@
+name: Record TikTok LIVE
+
+on:
+  workflow_dispatch:
+    inputs:
+      username:
+        description: TikTok username without @
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+# One recorder per creator prevents duplicate files when the 5-minute monitor
+# sees the same live repeatedly. A new run after the runner limit creates the
+# next segment; the README explains how to concatenate them losslessly.
+concurrency:
+  group: tiktok-record-${{ inputs.username }}
+  cancel-in-progress: false
+
+jobs:
+  record:
+    runs-on: ubuntu-latest
+    timeout-minutes: 350
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: Install FFmpeg and recorder
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq ffmpeg
+          git clone --depth 1 https://github.com/Michele0303/TikTok-Live-Recorder /tmp/recorder
+          pip install --disable-pip-version-check /tmp/recorder
+      - name: Record until the LIVE ends or the runner limit approaches
+        env:
+          USERNAME: ${{ inputs.username }}
+        run: |
+          mkdir -p recordings
+          python /tmp/recorder/src/main.py \
+            -user "$USERNAME" \
+            -mode automatic \
+            -automatic_interval 2 \
+            -duration 20400 \
+            -output recordings \
+            -no-update-check
+      - name: Upload to Google Drive
+        if: always() && hashFiles('recordings/*') != ''
+        env:
+          RCLONE_CONFIG_B64: ${{ secrets.RCLONE_CONFIG_B64 }}
+          DRIVE_REMOTE_PATH: ${{ vars.DRIVE_REMOTE_PATH }}
+        run: |
+          set -euo pipefail
+          test -n "$RCLONE_CONFIG_B64" || { echo 'Missing RCLONE_CONFIG_B64; retaining artifact only'; exit 0; }
+          mkdir -p "$HOME/.config/rclone"
+          echo "$RCLONE_CONFIG_B64" | base64 -d > "$HOME/.config/rclone/rclone.conf"
+          curl -fsSL https://rclone.org/install.sh | sudo bash
+          rclone copy recordings "${DRIVE_REMOTE_PATH:-gdrive:tiktok-live}" --progress
+      - name: Retain short-lived recovery artifact
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: tiktok-${{ inputs.username }}-${{ github.run_id }}
+          path: recordings/
+          retention-days: 3
+          if-no-files-found: ignore
