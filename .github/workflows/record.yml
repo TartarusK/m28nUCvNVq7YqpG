@@ -38,7 +38,7 @@ jobs:
       - name: Clone TikTok-Live-Recorder
         run: |
           git clone https://github.com/Michele0303/tiktok-live-recorder.git /tmp/recorder
-
+          pip install uv
       - name: Record until the LIVE ends or the runner limit approaches
         env:
           USERNAME: ${{ inputs.username }}
