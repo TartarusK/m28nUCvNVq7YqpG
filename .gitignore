@@ -1,0 +1,6 @@
+recordings/
+*.mp4
+*.flv
+rclone.conf
+.env
+__pycache__/
