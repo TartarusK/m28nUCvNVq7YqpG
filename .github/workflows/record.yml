@@ -40,8 +40,7 @@ jobs:
           mkdir -p recordings
           python /tmp/recorder/src/main.py \
             -user "$USERNAME" \
-            -mode automatic \
-            -automatic_interval 2 \
+            -mode manual \
             -duration 20400 \
             -output recordings \
             -no-update-check
