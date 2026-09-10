@@ -33,8 +33,8 @@ jobs:
           RCLONE_CONF: ${{ secrets.RCLONE_CONFIG_B64 }}
         run: |
           mkdir -p ~/.config/rclone
-          echo "$RCLONE_CONF" > ~/.config/rclone/rclone.conf
-
+          echo "$RCLONE_CONF" | base64 --decode > ~/.config/rclone/rclone.conf
+          
       - name: Clone TikTok-Live-Recorder
         run: |
           git clone https://github.com/Michele0303/tiktok-live-recorder.git /tmp/recorder
