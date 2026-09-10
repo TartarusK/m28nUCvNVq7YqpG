@@ -39,21 +39,28 @@ jobs:
         run: |
           git clone https://github.com/Michele0303/tiktok-live-recorder.git /tmp/recorder
           pip install uv
+
       - name: Record until the LIVE ends or the runner limit approaches
         env:
           USERNAME: ${{ inputs.username }}
           COOKIES_JSON: ${{ secrets.TIKTOK_COOKIES_JSON }}
         run: |
           mkdir -p recordings
+          # Guardamos la ruta principal para no perder de vista los videos
+          RUTA_PRINCIPAL=$(pwd)
+          
           if [ -n "$COOKIES_JSON" ]; then
-            echo "$COOKIES_JSON" > cookies.json
+            echo "$COOKIES_JSON" > "$RUTA_PRINCIPAL/cookies.json"
             echo "$COOKIES_JSON" > /tmp/recorder/cookies.json
           fi
-          python /tmp/recorder/src/main.py \
+          
+          # Entramos a la carpeta del grabador para que 'uv' funcione sin llorar
+          cd /tmp/recorder
+          python src/main.py \
             -user "$USERNAME" \
             -mode manual \
             -duration 20400 \
-            -output recordings \
+            -output "$RUTA_PRINCIPAL/recordings" \
             -no-update-check
 
       - name: Upload to Google Drive
