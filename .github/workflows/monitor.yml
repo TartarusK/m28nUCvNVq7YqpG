@@ -32,13 +32,28 @@ jobs:
           cat live.json
           python - <<'PY'
           import json, os, subprocess
+          repo = os.environ['REPOSITORY']
+          
+          print("Revisando tareas activas en GitHub...")
+          cmd_prog = ['gh', 'run', 'list', '--workflow', 'record.yml', '--state', 'in_progress', '--json', 'displayTitle']
+          cmd_queue = ['gh', 'run', 'list', '--workflow', 'record.yml', '--state', 'queued', '--json', 'displayTitle']
+          
+          # Obtenemos los títulos de las grabaciones vivas
+          activos = subprocess.run(cmd_prog, capture_output=True, text=True).stdout.lower()
+          en_cola = subprocess.run(cmd_queue, capture_output=True, text=True).stdout.lower()
+          titulos_ocupados = activos + en_cola
+          
           for item in json.load(open('live.json')):
               if item['live']:
-                  print(f"Dispatching recorder for @{item['username']}")
-                  subprocess.run([
-                      'gh', 'workflow', 'run', 'record.yml', '--repo', os.environ['REPOSITORY'],
-                      '-f', f"username={item['username']}"
-                  ], check=True)
+                  user = item['username'].lower()
+                  
+                  # Si el usuario ya está en el título de una tarea activa, lo saltamos
+                  if user in titulos_ocupados:
+                      print(f"Skipping @{item['username']} - ¡Ya hay una grabación en proceso o en cola!")
+                  else:
+                      print(f"Dispatching recorder for @{item['username']}")
+                      subprocess.run([
+                          'gh', 'workflow', 'run', 'record.yml', '--repo', repo,
+                          '-f', f"username={item['username']}"
+                      ], check=True)
           PY
-
-
