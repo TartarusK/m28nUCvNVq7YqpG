@@ -31,27 +31,38 @@ jobs:
           python check_live.py "${USERS[@]}" > live.json || true
           cat live.json
           python - <<'PY'
-          import json, os, subprocess
+          import json, os, subprocess, sys
           repo = os.environ['REPOSITORY']
           
-          print("Revisando tareas activas en GitHub...")
-          cmd_prog = ['gh', 'run', 'list', '--workflow', 'record.yml', '--state', 'in_progress', '--json', 'displayTitle']
-          cmd_queue = ['gh', 'run', 'list', '--workflow', 'record.yml', '--state', 'queued', '--json', 'displayTitle']
+          print("\nConsultando tareas activas directamente a la API de GitHub...")
+          cmd = ['gh', 'api', f"/repos/{repo}/actions/workflows/record.yml/runs", '-X', 'GET', '-F', 'per_page=30']
+          result = subprocess.run(cmd, capture_output=True, text=True)
           
-          # Obtenemos los títulos de las grabaciones vivas
-          activos = subprocess.run(cmd_prog, capture_output=True, text=True).stdout.lower()
-          en_cola = subprocess.run(cmd_queue, capture_output=True, text=True).stdout.lower()
-          titulos_ocupados = activos + en_cola
+          if result.returncode != 0:
+              print(f"Error consultando la API: {result.stderr}")
+              sys.exit(1)
+              
+          data = json.loads(result.stdout)
+          runs = data.get('workflow_runs', [])
+          
+          activos = []
+          estados = ['in_progress', 'queued', 'pending', 'requested']
+          for r in runs:
+              if r.get('status') in estados:
+                  # Buscamos el nombre del usuario en el título de la tarea
+                  titulo = (r.get('display_title') or r.get('name') or '').lower()
+                  activos.append(titulo)
+                  
+          print(f"Grabaciones actualmente activas: {activos}\n")
           
           for item in json.load(open('live.json')):
               if item['live']:
                   user = item['username'].lower()
                   
-                  # Si el usuario ya está en el título de una tarea activa, lo saltamos
-                  if user in titulos_ocupados:
-                      print(f"Skipping @{item['username']} - ¡Ya hay una grabación en proceso o en cola!")
+                  if any(user in titulo for titulo in activos):
+                      print(f"✅ Skipping @{item['username']} - ¡Ya hay una grabación activa o en cola!")
                   else:
-                      print(f"Dispatching recorder for @{item['username']}")
+                      print(f"🚀 Dispatching recorder for @{item['username']}")
                       subprocess.run([
                           'gh', 'workflow', 'run', 'record.yml', '--repo', repo,
                           '-f', f"username={item['username']}"
