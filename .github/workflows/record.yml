@@ -21,7 +21,7 @@ jobs:
       - name: Set up Python
         uses: actions/setup-python@v5
         with:
-          python-version: '3.10'
+          python-version: '3.11'
 
       - name: Install System Dependencies (FFmpeg & Rclone)
         run: |
@@ -57,7 +57,7 @@ jobs:
           
           # Entramos a la carpeta del grabador para que 'uv' funcione sin llorar
           cd /tmp/recorder
-          uv run --python 3.10 python src/main.py \
+          uv run --python 3.11 python src/main.py \
             -user "$USERNAME" \
             -mode manual \
             -duration 20400 \
