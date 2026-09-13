@@ -73,7 +73,7 @@ jobs:
             if [ -f "$file" ]; then
               echo "🛠️ Reparando índice de: $file"
               # Renombramos el original temporalmente
-              mv "$file" "crrupto_$file"
+              mv "$file" "corrupto_$file"
               # Usamos FFmpeg para copiar el video/audio ignorando errores y creando un índice nuevo y limpio
               ffmpeg -err_detect ignore_err -i "corrupto_$file" -c copy "$file" || true
               # Borramos el archivo corrupto para no gastar espacio
