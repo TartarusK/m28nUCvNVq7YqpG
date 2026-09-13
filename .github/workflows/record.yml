@@ -62,6 +62,7 @@ jobs:
             -mode manual \
             -duration 20400 \
             -output "$RUTA_PRINCIPAL/recordings" \
+            -format flv \
             -no-update-check
 
       - name: Upload to Google Drive
