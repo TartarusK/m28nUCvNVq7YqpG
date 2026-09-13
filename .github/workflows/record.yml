@@ -62,8 +62,25 @@ jobs:
             -mode manual \
             -duration 20400 \
             -output "$RUTA_PRINCIPAL/recordings" \
-            -format mkv \
             -no-update-check
+
+      - name: Repair Corrupted MP4 with FFmpeg
+        if: always()
+        run: |
+          cd recordings
+          for file in *.mp4; do
+            # Verifica que el archivo exista para evitar errores
+            if [ -f "$file" ]; then
+              echo "🛠️ Reparando índice de: $file"
+              # Renombramos el original temporalmente
+              mv "$file" "crrupto_$file"
+              # Usamos FFmpeg para copiar el video/audio ignorando errores y creando un índice nuevo y limpio
+              ffmpeg -err_detect ignore_err -i "corrupto_$file" -c copy "$file" || true
+              # Borramos el archivo corrupto para no gastar espacio
+              rm "corrupto_$file"
+            fi
+          done
+
 
       - name: Upload to Google Drive
         if: always()
