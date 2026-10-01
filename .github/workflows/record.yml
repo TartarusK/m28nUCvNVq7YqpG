@@ -1,4 +1,4 @@
-name: Record TikTok LIVE
+Name: Record TikTok LIVE
 run-name: Grabando a @${{ inputs.username }}
 
 on:
@@ -47,16 +47,21 @@ jobs:
           COOKIES_JSON: ${{ secrets.TIKTOK_COOKIES_JSON }}
         run: |
           mkdir -p recordings
-          # Guardamos la ruta principal para no perder de vista los videos
           RUTA_PRINCIPAL=$(pwd)
           
+          # 1. Entramos a la carpeta del grabador primero
+          cd /tmp/recorder
+          
+          # 2. Inyectamos el JSON de forma segura para no romper el formato
           if [ -n "$COOKIES_JSON" ]; then
-            echo "$COOKIES_JSON" > "$RUTA_PRINCIPAL/cookies.json"
-            echo "$COOKIES_JSON" > /tmp/recorder/cookies.json
+            cat <<< "$COOKIES_JSON" > cookies.json
+            echo "🔍 Verificando archivo de cookies:"
+            ls -lh cookies.json
+          else
+            echo "⚠️ ADVERTENCIA: El secret TIKTOK_COOKIES_JSON está vacío."
           fi
           
-          # Entramos a la carpeta del grabador para que 'uv' funcione sin llorar
-          cd /tmp/recorder
+          # 3. Ejecutamos el script
           uv run --python 3.11 python src/main.py \
             -user "$USERNAME" \
             -mode manual \
@@ -80,7 +85,6 @@ jobs:
               rm "corrupto_$file"
             fi
           done
-
 
       - name: Upload to Google Drive
         if: always()
