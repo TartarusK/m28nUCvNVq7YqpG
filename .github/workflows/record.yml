@@ -35,7 +35,18 @@ jobs:
         run: |
           mkdir -p ~/.config/rclone
           echo "$RCLONE_CONF" | base64 --decode > ~/.config/rclone/rclone.conf
-          
+    
+      - name: Enmascarar IP con Cloudflare WARP (VPN Gratis)
+        run: |
+          curl -fsSL https://pkg.cloudflareclient.com/pubkey.gpg | sudo gpg --yes --dearmor --output /usr/share/keyrings/cloudflare-warp-archive-keyring.gpg
+          echo "deb [signed-by=/usr/share/keyrings/cloudflare-warp-archive-keyring.gpg] https://pkg.cloudflareclient.com/ $(lsb_release -cs) main" | sudo tee /etc/apt/sources.list.d/cloudflare-client.list
+          sudo apt-get update && sudo apt-get install cloudflare-warp -y
+          warp-cli --accept-tos registration new
+          warp-cli --accept-tos connect
+          sleep 5
+          echo "🌐 IP actual camuflada:"
+          curl ifconfig.me
+      
       - name: Clone TikTok-Live-Recorder
         run: |
           git clone https://github.com/Michele0303/tiktok-live-recorder.git /tmp/recorder
