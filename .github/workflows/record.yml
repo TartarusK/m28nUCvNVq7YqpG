@@ -1,4 +1,4 @@
-Name: Record TikTok LIVE
+name: Record TikTok LIVE
 run-name: Grabando a @${{ inputs.username }}
 
 on:
