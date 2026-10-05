@@ -65,11 +65,9 @@ jobs:
           
           # 2. Inyectamos el JSON de forma segura para no romper el formato
           if [ -n "$COOKIES_JSON" ]; then
-            cat <<< "$COOKIES_JSON" > cookies.json
-            echo "🔍 Verificando archivo de cookies:"
-            ls -lh cookies.json
+            python3 -c "import json,os;d=json.loads(os.environ['COOKIES_JSON']);d={c['name']:c['value'] for c in d} if isinstance(d,list) else d;[open(p,'w').write(json.dumps(d)) for p in ('cookies.json','src/cookies.json')];print('claves:',sorted(d))"
           else
-            echo "⚠️ ADVERTENCIA: El secret TIKTOK_COOKIES_JSON está vacío."
+            echo "secret vacío"; exit 1
           fi
           
           # 3. Ejecutamos el script
